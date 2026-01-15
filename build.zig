@@ -1,6 +1,6 @@
 const std = @import("std");
 const Module = std.Build.Module;
-const Mode = std.builtin.Mode;
+const OptimizeMode = std.builtin.OptimizeMode;
 const ResolvedTarget = std.Build.ResolvedTarget;
 
 // Although this function looks imperative, note that its job is to
@@ -22,17 +22,15 @@ pub fn build(b: *std.Build) void {
 
     const module = b.addModule("prettytable", .{
         .root_source_file = b.path("src/lib.zig"),
+        .target = target,
+        .optimize = optimize,
     });
 
     module.addImport("DisplayWidth", zg.module("DisplayWidth"));
 
-    const lib = b.addStaticLibrary(.{
+    const lib = b.addLibrary(.{
         .name = "prettytable-zig",
-        // In this case the main source file is merely a path, however, in more
-        // complicated build scripts, this could be a generated file.
-        .root_source_file = b.path("src/lib.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = module,
     });
 
     // This declares intent for the library to be installed into the standard
@@ -51,52 +49,52 @@ pub fn build(b: *std.Build) void {
 
     // Creates a step for unit testing. This only builds the test executable
     // but does not run it.
-    const main_tests = b.addTest(.{
-        .root_source_file = b.path("src/lib.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
+    const main_tests = b.addTest(.{ .root_module = module });
     main_tests.root_module.addImport("DisplayWidth", zg.module("DisplayWidth"));
 
     const run_main_tests = b.addRunArtifact(main_tests);
 
     const format_tests = b.addTest(.{
-        .root_source_file = b.path("src/format.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.addModule("format", .{
+            .root_source_file = b.path("src/format.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
     });
     format_tests.root_module.addImport("DisplayWidth", zg.module("DisplayWidth"));
     const run_format_tests = b.addRunArtifact(format_tests);
 
     const cell_tests = b.addTest(.{
-        .root_source_file = b.path("src/cell.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.addModule("cell", .{
+            .root_source_file = b.path("src/cell.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
     });
     cell_tests.root_module.addImport("DisplayWidth", zg.module("DisplayWidth"));
     const run_cell_tests = b.addRunArtifact(cell_tests);
 
-    const row_tests = b.addTest(.{
+    const row_tests = b.addTest(.{ .root_module = b.addModule("row", .{
         .root_source_file = b.path("src/row.zig"),
         .target = target,
         .optimize = optimize,
-    });
+    }) });
     row_tests.root_module.addImport("DisplayWidth", zg.module("DisplayWidth"));
     const run_row_tests = b.addRunArtifact(row_tests);
 
-    const table_tests = b.addTest(.{
+    const table_tests = b.addTest(.{ .root_module = b.addModule("table", .{
         .root_source_file = b.path("src/table.zig"),
         .target = target,
         .optimize = optimize,
-    });
+    }) });
     table_tests.root_module.addImport("DisplayWidth", zg.module("DisplayWidth"));
     const run_table_tests = b.addRunArtifact(table_tests);
 
-    const style_tests = b.addTest(.{
+    const style_tests = b.addTest(.{ .root_module = b.addModule("style", .{
         .root_source_file = b.path("src/style.zig"),
         .target = target,
         .optimize = optimize,
-    });
+    }) });
     style_tests.root_module.addImport("DisplayWidth", zg.module("DisplayWidth"));
     const run_style_tests = b.addRunArtifact(style_tests);
 
@@ -111,21 +109,33 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_table_tests.step);
     test_step.dependOn(&run_style_tests.step);
 
-    buildExample(b, optimize, target, module, zg, &.{ "basic", "format", "multiline", "align", "read", "style", "unicode" });
+    // Check
+    const check = b.step("check", "Check if library compiles");
+    check.dependOn(&lib.step);
+    check.dependOn(&run_main_tests.step);
+    check.dependOn(&run_format_tests.step);
+    check.dependOn(&run_cell_tests.step);
+    check.dependOn(&run_row_tests.step);
+    check.dependOn(&run_table_tests.step);
+    check.dependOn(&run_style_tests.step);
+
+    buildExample(b, optimize, target, module, check, zg, &.{ "basic", "format", "multiline", "align", "read", "style", "unicode" });
 }
 
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
 // runner.
-pub fn buildExample(b: *std.Build, optimize: Mode, target: ResolvedTarget, module: *Module, zg: *std.Build.Dependency, comptime source: []const []const u8) void {
+pub fn buildExample(b: *std.Build, optimize: OptimizeMode, target: ResolvedTarget, module: *Module, check: *std.Build.Step, zg: *std.Build.Dependency, comptime source: []const []const u8) void {
     inline for (source) |s| {
         const exe = b.addExecutable(.{
             .name = s,
-            // In this case the main source file is merely a path, however, in more
-            // complicated build scripts, this could be a generated file.
-            .root_source_file = b.path("examples/" ++ s ++ ".zig"),
-            .target = target,
-            .optimize = optimize,
+            .root_module = b.addModule(s, .{
+                // In this case the main source file is merely a path, however, in more
+                // complicated build scripts, this could be a generated file.
+                .root_source_file = b.path("examples/" ++ s ++ ".zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
         });
 
         exe.root_module.addImport("prettytable", module);
@@ -138,5 +148,7 @@ pub fn buildExample(b: *std.Build, optimize: Mode, target: ResolvedTarget, modul
 
         // const ex = b.addRunArtifact(exe);
         // example_step.dependOn(&ex.step);
+
+        check.dependOn(&exe.step);
     }
 }

@@ -17,8 +17,8 @@
     // Internet connectivity.
     .dependencies = .{
         .zg = .{
-            .url = "git+https://codeberg.org/atman/zg.git#0b05141b033043c5f7bcd72048a48eef6531ea6c",
-            .hash = "zg-0.14.0-oGqU3KEFswIffnDu8eAE2XlhzwcfgjwtM6akIc5L7cEV",
+            .url = "git+https://codeberg.org/atman/zg.git?ref=HEAD#d9f596626e8ec05a9f3e47f7bc83aedd5bd2f989",
+            .hash = "zg-0.15.3-oGqU3P5ItAJHmwDLfzX6sg6Xc5MhSJU2TctHfWu_sKLv",
         },
     },
     .paths = .{

@@ -1,9 +1,14 @@
 const std = @import("std");
-const Table = @import("prettytable").Table;
+
 const FORMAT_BOX_CHARS = @import("prettytable").FORMAT_BOX_CHARS;
+const Table = @import("prettytable").Table;
 
 pub fn main() !void {
-    var table1 = Table.init(std.heap.page_allocator);
+    var gpa = std.heap.GeneralPurposeAllocator(.{}).init;
+    defer std.debug.assert(gpa.deinit() == .ok);
+    const allocator = gpa.allocator();
+
+    var table1 = Table.init(allocator);
     defer table1.deinit();
 
     try table1.addRows(&[_][]const []const u8{
@@ -11,12 +16,12 @@ pub fn main() !void {
         &[_][]const u8{ "1", "2" },
     });
 
-    var buf = std.ArrayList(u8).init(std.heap.page_allocator);
-    defer buf.deinit();
-    const out = buf.writer();
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(allocator);
+    const out = buf.writer(allocator);
     _ = try table1.print(out);
 
-    var table2 = Table.init(std.heap.page_allocator);
+    var table2 = Table.init(allocator);
     defer table2.deinit();
 
     try table2.addRows(&[_][]const []const u8{

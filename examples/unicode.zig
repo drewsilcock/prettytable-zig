@@ -1,8 +1,11 @@
 const std = @import("std");
+
 const prettytable = @import("prettytable");
 
 pub fn main() !void {
-    const allocator = std.heap.page_allocator;
+    var gpa = std.heap.GeneralPurposeAllocator(.{}).init;
+    defer std.debug.assert(gpa.deinit() == .ok);
+    const allocator = gpa.allocator();
 
     // Example 1: Chinese character table
     {

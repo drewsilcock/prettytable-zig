@@ -1,10 +1,15 @@
 const std = @import("std");
-const Table = @import("prettytable").Table;
+
 const FORMAT_BOX_CHARS = @import("prettytable").FORMAT_BOX_CHARS;
+const Table = @import("prettytable").Table;
 
 pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}).init;
+    defer std.debug.assert(gpa.deinit() == .ok);
+    const allocator = gpa.allocator();
+
     // Create ad table
-    var table = Table.init(std.heap.page_allocator);
+    var table = Table.init(allocator);
     defer table.deinit();
 
     // add some rows

@@ -205,8 +205,8 @@ One scenario is to read data from a CSV file.
 ### Get the table as string(bytes)
 
 ```zig
-    var buf = std.ArrayList(u8).init(std.heap.page_allocator);
-    defer buf.deinit();
+    var buf = std.ArrayList(u8);
+    defer buf.deinit(std.heap.page_allocator);
 
     var out = buf.writer();
     _ = try table.print(out);
